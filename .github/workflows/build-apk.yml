@@ -10,6 +10,7 @@ on:
       - "scripts/app_branding.py"
       - "scripts/add_skeleton_loading.py"
       - "scripts/add_splash_screen.py"
+      - "scripts/diagnose_news_loading.py"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -33,6 +34,9 @@ jobs:
           test -f the-current-flutter-starter.zip
           unzip -o the-current-flutter-starter.zip
           test -f the_current_flutter/pubspec.yaml
+
+      - name: Diagnose news feed loading code
+        run: python3 scripts/diagnose_news_loading.py
 
       - name: Add fallback images for stories without image URLs
         run: python3 scripts/fix_missing_images.py
