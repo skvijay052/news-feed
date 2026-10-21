@@ -9,6 +9,7 @@ on:
       - "scripts/fix_missing_images.py"
       - "scripts/app_branding.py"
       - "scripts/add_skeleton_loading.py"
+      - "scripts/add_splash_screen.py"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -40,11 +41,12 @@ jobs:
         working-directory: the_current_flutter
         run: flutter create --platforms=android --org com.thecurrent.news .
 
-      - name: Apply News Feed branding and launcher icon
+      - name: Apply News Feed branding, skeleton loading, and splash screen
         run: |
           python3 -m pip install --user Pillow
           python3 scripts/app_branding.py
           python3 scripts/add_skeleton_loading.py
+          python3 scripts/add_splash_screen.py
 
       - name: Install dependencies
         working-directory: the_current_flutter
