@@ -162,6 +162,8 @@ main, count = re.subn(pattern, load_impl + "\n  Future<void> toggleSaved", main,
 if count != 1:
     raise SystemExit("Could not safely replace load()")
 main = re.sub(r'(?m)^\s*bool loading = true;\s*\n', '', main)
+# Refresh should reload immediately without referencing the removed loading flag.
+main = main.replace('setState(() => loading = true); load();', 'load();')
 main, count = re.subn(
     r'if\s*\(loading\)\s*const\s+SliverFillRemaining\s*\(.*?\)\s*\n\s*else\s+if\s*\(stories\.isEmpty\)',
     'if (stories.isEmpty)',
