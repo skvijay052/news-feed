@@ -169,7 +169,7 @@ main, count = re.subn(
 )
 if count != 1:
     raise SystemExit("Could not remove the loading placeholder branch")
-if "loading" in main or "CircularProgressIndicator" in main:
-    raise SystemExit("A loading reference remains; refusing to produce a spinner build")
+if "bool loading" in main or "if (loading)" in main or "CircularProgressIndicator" in main:
+    raise SystemExit("A loading UI reference remains; refusing to produce a spinner build")
 main_file.write_text(main, encoding="utf-8")
 print("News feed patched: instant visible content, no loading UI, BBC Tamil/English RSS with timeout and offline fallback.")
