@@ -173,7 +173,7 @@ if count != 1:
     raise SystemExit("Could not remove the loading placeholder branch")
 if "bool loading" in main or "if (loading)" in main or "CircularProgressIndicator" in main:
     raise SystemExit("A loading UI reference remains; refusing to produce a spinner build")
-// STORY DETAIL PAGE: open the publisher's full article inside the app.
+# STORY DETAIL PAGE: open the publisher's full article inside the app.
 if not re.search(r'(?m)^\s*webview_flutter\s*:', spec):
     match = re.search(r'(?m)^dependencies:\s*
 , spec)
