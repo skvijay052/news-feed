@@ -58,9 +58,9 @@ class NewsRepository {
           final month = months[dateMatch.group(2)!.toLowerCase()];
           if (month != null) {
             date = DateTime.tryParse(
-              '\${dateMatch.group(3)}-\${month.toString().padLeft(2, '0')}-'
-              '\${dateMatch.group(1)!.padLeft(2, '0')}T\${dateMatch.group(4)}:'
-              '\${dateMatch.group(5)}:\${dateMatch.group(6)}Z',
+              '${dateMatch.group(3)}-${month.toString().padLeft(2, '0')}-'
+              '${dateMatch.group(1)!.padLeft(2, '0')}T${dateMatch.group(4)}:'
+              '${dateMatch.group(5)}:${dateMatch.group(6)}Z',
             );
           }
         }
