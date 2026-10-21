@@ -44,7 +44,7 @@ jobs:
 
       - name: Build optimized arm64 release APK
         working-directory: the_current_flutter
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --split-debug-info=build/symbols
 
       - name: Upload optimized APK artifact
         uses: actions/upload-artifact@v4
@@ -52,4 +52,12 @@ jobs:
           name: the-current-news-arm64-release-apk
           path: the_current_flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Dart symbol files for crash diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-current-news-arm64-symbols
+          path: the_current_flutter/build/symbols/
+          if-no-files-found: ignore
           retention-days: 14
