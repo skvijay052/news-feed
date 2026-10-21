@@ -8,6 +8,7 @@ on:
       - "the-current-flutter-starter.zip"
       - "scripts/fix_missing_images.py"
       - "scripts/app_branding.py"
+      - "scripts/add_skeleton_loading.py"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -43,6 +44,7 @@ jobs:
         run: |
           python3 -m pip install --user Pillow
           python3 scripts/app_branding.py
+          python3 scripts/add_skeleton_loading.py
 
       - name: Install dependencies
         working-directory: the_current_flutter
