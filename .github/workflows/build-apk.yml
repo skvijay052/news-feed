@@ -7,6 +7,7 @@ on:
     paths:
       - "the-current-flutter-starter.zip"
       - "scripts/fix_missing_images.py"
+      - "scripts/app_branding.py"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -38,6 +39,11 @@ jobs:
         working-directory: the_current_flutter
         run: flutter create --platforms=android --org com.thecurrent.news .
 
+      - name: Apply News Feed branding and launcher icon
+        run: |
+          python3 -m pip install --user Pillow
+          python3 scripts/app_branding.py
+
       - name: Install dependencies
         working-directory: the_current_flutter
         run: flutter pub get
@@ -49,7 +55,7 @@ jobs:
       - name: Upload optimized APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: the-current-news-arm64-release-apk
+          name: news-feed-arm64-release-apk
           path: the_current_flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 14
