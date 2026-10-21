@@ -173,5 +173,126 @@ if count != 1:
     raise SystemExit("Could not remove the loading placeholder branch")
 if "bool loading" in main or "if (loading)" in main or "CircularProgressIndicator" in main:
     raise SystemExit("A loading UI reference remains; refusing to produce a spinner build")
+// STORY DETAIL PAGE: open the publisher's full article inside the app.
+if not re.search(r'(?m)^\s*webview_flutter\s*:', spec):
+    match = re.search(r'(?m)^dependencies:\s*
+, spec)
+    if not match:
+        raise SystemExit("Could not find dependencies section for webview_flutter")
+    spec = spec[:match.end()] + "\n  webview_flutter: ^4.13.0" + spec[match.end():]
+    pubspec.write_text(spec, encoding="utf-8")
+
+if "package:webview_flutter/webview_flutter.dart" not in main:
+    main = main.replace(
+        "import 'package:url_launcher/url_launcher.dart';",
+        "import 'package:url_launcher/url_launcher.dart';\nimport 'package:webview_flutter/webview_flutter.dart';",
+        1,
+    )
+
+detail_widget = r'''
+class NewsArticleDetailPage extends StatefulWidget {
+  const NewsArticleDetailPage({super.key, required this.article});
+  final NewsArticle article;
+
+  @override
+  State<NewsArticleDetailPage> createState() => _NewsArticleDetailPageState();
+}
+
+class _NewsArticleDetailPageState extends State<NewsArticleDetailPage> {
+  late final WebViewController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate())
+      ..loadRequest(Uri.parse(widget.article.url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.article.source, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: WebViewWidget(controller: controller),
+    );
+  }
+}
+
+'''
+if "class NewsArticleDetailPage extends StatefulWidget" not in main:
+    needle_class = "class TheCurrentApp extends StatelessWidget {"
+    if needle_class not in main:
+        raise SystemExit("Could not find insertion point for article detail page")
+    main = main.replace(needle_class, detail_widget + needle_class, 1)
+
+# Make each story card (including the featured story) open the in-app full article page.
+route = "Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => NewsArticleDetailPage(article: "
+main = main.replace(
+    "itemBuilder: (context, index) => _storyCard(stories[index]),",
+    "itemBuilder: (context, index) => InkWell(\n"
+    "                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(\n"
+    "                      builder: (_) => NewsArticleDetailPage(article: stories[index]),\n"
+    "                    )),\n"
+    "                    child: _storyCard(stories[index]),\n"
+    "                  ),",
+    1,
+)
+main = main.replace(
+    "SliverToBoxAdapter(child: _featured(stories.first)),",
+    "SliverToBoxAdapter(child: InkWell(\n"
+    "                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(\n"
+    "                  builder: (_) => NewsArticleDetailPage(article: stories.first),\n"
+    "                )),\n"
+    "                child: _featured(stories.first),\n"
+    "              )),",
+    1,
+)
+
+# Remove any Read More / Read full story button widget, preserving valid widget-list syntax.
+for label_pattern in [r"read\s+more", r"read\s+full\s+story"]:
+    while True:
+        m = re.search(label_pattern, main, flags=re.I)
+        if not m:
+            break
+        # Find the nearest supported button constructor before the label.
+        starts = [(main.rfind(name, 0, m.start()), name) for name in
+                  ("TextButton", "ElevatedButton", "OutlinedButton", "FilledButton")]
+        start, _ = max(starts)
+        if start < 0:
+            # If only a label exists, hide it rather than leave the old wording.
+            main = main[:m.start()] + "Story" + main[m.end():]
+            continue
+        # Locate the constructor's balanced parenthesis end, respecting quoted strings.
+        open_paren = main.find("(", start)
+        depth, quote, escaped, end = 0, None, False, None
+        for i in range(open_paren, len(main)):
+            ch = main[i]
+            if quote:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == quote:
+                    quote = None
+                continue
+            if ch in ("'", '"'):
+                quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        if end is None:
+            raise SystemExit("Could not safely remove Read More button")
+        main = main[:start] + "const SizedBox.shrink()" + main[end:]
+
+if "NewsArticleDetailPage(article: stories[index])" not in main:
+    raise SystemExit("Could not attach article detail navigation to story cards")
 main_file.write_text(main, encoding="utf-8")
-print("News feed patched: instant visible content, no loading UI, BBC Tamil/English RSS with timeout and offline fallback.")
+print("News feed patched: instant visible content, no loading UI, in-app full-story reader, and no Read More button.")
+
