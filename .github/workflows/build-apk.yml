@@ -1,0 +1,51 @@
+name: Build Android News APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "the-current-flutter-starter.zip"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract Flutter starter
+        run: |
+          test -f the-current-flutter-starter.zip
+          unzip -o the-current-flutter-starter.zip
+          test -f the_current_flutter/pubspec.yaml
+
+      - name: Generate Android project files
+        working-directory: the_current_flutter
+        run: |
+          flutter create --platforms=android --org com.thecurrent.news .
+
+      - name: Install dependencies
+        working-directory: the_current_flutter
+        run: flutter pub get
+
+      - name: Build debug APK
+        working-directory: the_current_flutter
+        run: flutter build apk --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-current-news-debug-apk
+          path: the_current_flutter/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
