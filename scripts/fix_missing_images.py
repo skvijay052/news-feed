@@ -15,9 +15,9 @@ source = source.replace(
 
 needle = "  Widget _imagePlaceholder({double width = double.infinity, double height = 130, bool dark = false}) => Container("
 helper = """  String _imageUrl(NewsArticle article) {
-    if (article.imageUrl.trim().startsWith('https://') ||
-        article.imageUrl.trim().startsWith('http://')) {
-      return article.imageUrl.trim();
+    final supplied = article.imageUrl.trim();
+    if (supplied.startsWith('https://') || supplied.startsWith('http://')) {
+      return supplied;
     }
 
     final category = article.category.toLowerCase();
@@ -26,27 +26,15 @@ helper = """  String _imageUrl(NewsArticle article) {
         : (category.contains('tech') || category.contains('தொழில்நுட்ப'))
             ? 'photo-1516321318423-f06f85e504b3'
             : (category.contains('business') || category.contains('வணிக'))
-                ? 'photo-146 финансов'
+                ? 'photo-1486406146926-c627a92ad1ab'
                 : article.language == 'ta'
                     ? 'photo-1495020689067-958852a7765e'
                     : 'photo-1504711434969-e33886168f5c';
 
-    // The URLs below are public Unsplash image CDN URLs.
-    final safePhoto = photo == 'photo-146 финансов'
-        ? 'photo-146093 в'
-        : photo;
-    return 'https://images.unsplash.com/$safePhoto?auto=format&fit=crop&w=1200&q=80';
+    return 'https://images.unsplash.com/$photo?auto=format&fit=crop&w=1200&q=80';
   }
 
 """
-# Keep the fallback helper simple and use known valid photo IDs only.
-helper = helper.replace(
-    "                ? 'photo-146 финансов'\n",
-    "                ? 'photo-146093 в'\n",
-).replace(
-    "    final safePhoto = photo == 'photo-146 финансов'\n        ? 'photo-146093 в'\n        : photo;\n    return 'https://images.unsplash.com/$safePhoto?auto=format&fit=crop&w=1200&q=80';",
-    "    return 'https://images.unsplash.com/$photo?auto=format&fit=crop&w=1200&q=80';"
-)
 if "_imageUrl(NewsArticle article)" not in source:
     if needle not in source:
         raise SystemExit("Could not locate image placeholder insertion point in main.dart")
