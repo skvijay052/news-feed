@@ -129,7 +129,7 @@ repo_file.write_text(repo, encoding="utf-8")
 
 spec = pubspec.read_text(encoding="utf-8")
 if not re.search(r'(?m)^\s+xml\s*:', spec):
-    match = re.search(r'(?m)^dependencies:\s*$', spec)
+    match = re.search(r"(?m)^dependencies:\s*$", spec)
     if not match:
         raise SystemExit("Could not find dependencies section in pubspec.yaml")
     spec = spec[:match.end()] + "\n  xml: ^6.5.0" + spec[match.end():]
