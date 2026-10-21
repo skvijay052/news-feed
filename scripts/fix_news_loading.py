@@ -175,8 +175,7 @@ if "bool loading" in main or "if (loading)" in main or "CircularProgressIndicato
     raise SystemExit("A loading UI reference remains; refusing to produce a spinner build")
 # STORY DETAIL PAGE: open the publisher's full article inside the app.
 if not re.search(r'(?m)^\s*webview_flutter\s*:', spec):
-    match = re.search(r'(?m)^dependencies:\s*
-, spec)
+    match = re.search(r"(?m)^dependencies:\s*$", spec)
     if not match:
         raise SystemExit("Could not find dependencies section for webview_flutter")
     spec = spec[:match.end()] + "\n  webview_flutter: ^4.13.0" + spec[match.end():]
