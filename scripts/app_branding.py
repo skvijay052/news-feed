@@ -13,17 +13,14 @@ if MANIFEST.exists():
     s2 = re.sub(r'android:label="[^"]+"', 'android:label="News Feed"', s, count=1)
     MANIFEST.write_text(s2, encoding="utf-8")
 
-# Set a consistent homepage/app title where the starter uses these literal labels.
-if MAIN.exists():
-    s = MAIN.read_text(encoding="utf-8")
-    for old, new in [
-        ("The Current - The News Feed", "News Feed"),
-        ("The Current — The News Feed", "News Feed"),
-        ("The Current: The News Feed", "News Feed"),
-        ("The Current", "News Feed"),
-    ]:
-        s = s.replace(old, new)
-    MAIN.write_text(s, encoding="utf-8")
+# Rename visible starter branding throughout Dart UI files, including uppercase variants.
+import re
+LIB = ROOT / "lib"
+for dart_file in LIB.rglob("*.dart"):
+    s = dart_file.read_text(encoding="utf-8")
+    s = re.sub(r"The Current\s*[-—:]\s*The News Feed", "News Feed", s, flags=re.IGNORECASE)
+    s = re.sub(r"The Current", "News Feed", s, flags=re.IGNORECASE)
+    dart_file.write_text(s, encoding="utf-8")
 
 # Generate the supplied NF-style mark as a clean red/white launcher icon.
 try:
