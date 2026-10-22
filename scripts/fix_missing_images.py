@@ -12,7 +12,7 @@ helper = r"""String _resolveImageUrl(NewsArticle article) {
     return supplied;
   }
 
-  final topic = '\${article.category} \${article.title}'.toLowerCase();
+  final topic = '${article.category} ${article.title}'.toLowerCase();
   final photo = (topic.contains('sport') || topic.contains('cricket') ||
           topic.contains('football') || topic.contains('விளையாட்டு'))
       ? 'photo-1461896836934-ffe607ba8211'
