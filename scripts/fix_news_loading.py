@@ -14,75 +14,84 @@ import 'package:xml/xml.dart';
 import 'news_article.dart';
 
 class NewsRepository {
-  static const tamilFeedUrl = String.fromEnvironment(
-    'TAMIL_FEED_URL',
-    defaultValue: 'https://feeds.bbci.co.uk/tamil/rss.xml',
-  );
-  static const englishFeedUrl = String.fromEnvironment(
-    'ENGLISH_FEED_URL',
-    defaultValue: 'https://feeds.bbci.co.uk/news/world/rss.xml',
-  );
+  static const feeds = <({String url, String language, String source})>[
+    (url: 'https://feeds.bbci.co.uk/tamil/rss.xml', language: 'ta', source: 'BBC தமிழ்'),
+    (url: 'https://feeds.bbci.co.uk/news/india/rss.xml', language: 'en', source: 'BBC India'),
+    (url: 'https://feeds.bbci.co.uk/news/world/rss.xml', language: 'en', source: 'BBC World'),
+    (url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', language: 'en', source: 'BBC Technology'),
+    (url: 'https://feeds.bbci.co.uk/news/business/rss.xml', language: 'en', source: 'BBC Business'),
+    (url: 'https://feeds.bbci.co.uk/sport/rss.xml', language: 'en', source: 'BBC Sport'),
+    (url: 'https://news.google.com/rss/search?q=Tamil+Nadu&hl=ta&gl=IN&ceid=IN:ta', language: 'ta', source: 'Google News தமிழ்'),
+    (url: 'https://news.google.com/rss/search?q=India+latest+news&hl=en-IN&gl=IN&ceid=IN:en', language: 'en', source: 'Google News India'),
+    (url: 'https://news.google.com/rss/search?q=Chennai+news&hl=en-IN&gl=IN&ceid=IN:en', language: 'en', source: 'Google News Chennai'),
+    (url: 'https://news.google.com/rss/search?q=technology+news&hl=en-IN&gl=IN&ceid=IN:en', language: 'en', source: 'Google News Technology'),
+  ];
 
   Future<List<NewsArticle>> fetchAll() async {
-    final results = await Future.wait([
-      _fetchOne(tamilFeedUrl, 'ta'),
-      _fetchOne(englishFeedUrl, 'en'),
-    ]);
-    final articles = results.expand((items) => items).toList()
+    final results = await Future.wait(
+      feeds.map((feed) => _fetchOne(feed.url, feed.language, feed.source)),
+    );
+    final byUrl = <String, NewsArticle>{};
+    for (final article in results.expand((items) => items)) {
+      byUrl.putIfAbsent(article.url, () => article);
+    }
+    final articles = byUrl.values.toList()
       ..sort((a, b) => (b.publishedAt ?? DateTime(2000))
           .compareTo(a.publishedAt ?? DateTime(2000)));
     return articles;
   }
 
-  Future<List<NewsArticle>> _fetchOne(String endpoint, String language) async {
+  Future<List<NewsArticle>> _fetchOne(
+    String endpoint, String language, String source,
+  ) async {
     try {
-      final response = await http.get(Uri.parse(endpoint)).timeout(
-        const Duration(seconds: 8),
-      );
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: const {'User-Agent': 'NewsFeed/1.0 (Android RSS Reader)'},
+      ).timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) return const [];
       final document = XmlDocument.parse(response.body);
       final articles = <NewsArticle>[];
       for (final item in document.findAllElements('item')) {
-        String field(String name) => item.getElement(name)?.innerText.trim() ?? '';
+        String field(String name) =>
+            item.children.whereType<XmlElement>()
+                .where((element) => element.name.local == name)
+                .map((element) => element.innerText.trim())
+                .firstOrNull ?? '';
         final title = field('title');
         final url = field('link');
         if (title.isEmpty || !url.startsWith('http')) continue;
         final rawDate = field('pubDate');
-        final dateMatch = RegExp(
-          r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})',
-        ).firstMatch(rawDate);
         DateTime? date;
-        if (dateMatch != null) {
-          const months = {'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,
-            'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12};
-          final month = months[dateMatch.group(2)!.toLowerCase()];
-          if (month != null) {
-            date = DateTime.tryParse(
-              '${dateMatch.group(3)}-${month.toString().padLeft(2, '0')}-'
-              '${dateMatch.group(1)!.padLeft(2, '0')}T${dateMatch.group(4)}:'
-              '${dateMatch.group(5)}:${dateMatch.group(6)}Z',
-            );
-          }
+        try {
+          date = HttpDate.parse(rawDate).toUtc();
+        } catch (_) {
+          date = DateTime.tryParse(rawDate)?.toUtc();
         }
         var image = '';
         for (final element in item.descendants.whereType<XmlElement>()) {
-          if (element.name.local == 'thumbnail' || element.name.local == 'content') {
-            final candidate = element.getAttribute('url');
+          if (element.name.local == 'thumbnail' ||
+              element.name.local == 'content' ||
+              element.name.local == 'enclosure') {
+            final candidate = element.getAttribute('url') ??
+                element.getAttribute('href');
             if (candidate != null && candidate.startsWith('http')) {
               image = candidate;
               break;
             }
           }
         }
-        final description = field('description')
+        var description = field('description')
             .replaceAll(RegExp(r'<[^>]*>'), ' ')
-            .replaceAll(RegExp(r'\s+'), ' ')
+            .replaceAll(RegExp(r'&nbsp;|&#160;'), ' ')
+            .replaceAll(RegExp(r'\\s+'), ' ')
             .trim();
+        description = description.replaceAll('&amp;', '&')
+            .replaceAll('&quot;', '"').replaceAll('&#39;', "'");
         final category = field('category');
         articles.add(NewsArticle(
           id: url, title: title, url: url, language: language,
-          summary: description, imageUrl: image,
-          source: language == 'ta' ? 'BBC தமிழ்' : 'BBC News',
+          summary: description, imageUrl: image, source: source,
           category: category.isEmpty ? 'Latest' : category,
           publishedAt: date,
         ));
@@ -97,29 +106,27 @@ class NewsRepository {
     NewsArticle(
       id: 'demo-ta-1', title: 'தமிழ்நாட்டின் முக்கிய செய்திகள்',
       summary: 'தமிழ் செய்தி ஊட்டம் கிடைக்கும்போது புதிய தலைப்புகள் இங்கே தோன்றும்.',
-      url: 'https://tamilnews-feed.netlify.app/', language: 'ta',
-      source: 'The Current Tamil', category: 'தமிழ்நாடு',
-      publishedAt: DateTime.now(),
+      url: 'https://news.google.com/', language: 'ta',
+      source: 'News Feed', category: 'தமிழ்நாடு', publishedAt: DateTime.now(),
     ),
     NewsArticle(
       id: 'demo-en-1', title: 'Latest news from India and around the world',
       summary: 'Live headlines will appear here when a news feed is available.',
-      url: 'https://newsfeed-current.netlify.app/', language: 'en',
-      source: 'The Current', category: 'Top Stories',
-      publishedAt: DateTime.now(),
+      url: 'https://news.google.com/', language: 'en',
+      source: 'News Feed', category: 'Top Stories', publishedAt: DateTime.now(),
     ),
     NewsArticle(
       id: 'demo-ta-2', title: 'தொழில்நுட்பம், வணிகம் மற்றும் விளையாட்டு',
       summary: 'தமிழ் செய்திகளைப் படிக்கவும், பிரிவுகளின் அடிப்படையில் தேடவும்.',
-      url: 'https://tamilnews-feed.netlify.app/', language: 'ta',
-      source: 'The Current Tamil', category: 'தொழில்நுட்பம்',
+      url: 'https://news.google.com/', language: 'ta',
+      source: 'News Feed', category: 'தொழில்நுட்பம்',
       publishedAt: DateTime.now().subtract(const Duration(minutes: 35)),
     ),
     NewsArticle(
       id: 'demo-en-2', title: 'Technology, business and world updates',
       summary: 'Browse the latest stories in one combined news app.',
-      url: 'https://newsfeed-current.netlify.app/', language: 'en',
-      source: 'The Current', category: 'Technology',
+      url: 'https://news.google.com/', language: 'en',
+      source: 'News Feed', category: 'Technology',
       publishedAt: DateTime.now().subtract(const Duration(minutes: 50)),
     ),
   ];
