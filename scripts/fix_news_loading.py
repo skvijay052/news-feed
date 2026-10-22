@@ -9,7 +9,8 @@ pubspec = root / "pubspec.yaml"
 if not main_file.exists() or not repo_file.exists() or not pubspec.exists():
     raise SystemExit("Required Flutter source files are missing")
 
-repo = r"""import 'package:http/http.dart' as http;
+repo = r"""import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'news_article.dart';
 
@@ -53,11 +54,11 @@ class NewsRepository {
       final document = XmlDocument.parse(response.body);
       final articles = <NewsArticle>[];
       for (final item in document.findAllElements('item')) {
-        String field(String name) =>
-            item.children.whereType<XmlElement>()
-                .where((element) => element.name.local == name)
-                .map((element) => element.innerText.trim())
-                .firstOrNull ?? '';
+        String field(String name) {
+          final matches = item.children.whereType<XmlElement>()
+              .where((element) => element.name.local == name).toList();
+          return matches.isEmpty ? '' : matches.first.innerText.trim();
+        }
         final title = field('title');
         final url = field('link');
         if (title.isEmpty || !url.startsWith('http')) continue;
@@ -84,7 +85,7 @@ class NewsRepository {
         var description = field('description')
             .replaceAll(RegExp(r'<[^>]*>'), ' ')
             .replaceAll(RegExp(r'&nbsp;|&#160;'), ' ')
-            .replaceAll(RegExp(r'\\s+'), ' ')
+            .replaceAll(RegExp(r'\s+'), ' ')
             .trim();
         description = description.replaceAll('&amp;', '&')
             .replaceAll('&quot;', '"').replaceAll('&#39;', "'");
