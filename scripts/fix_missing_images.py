@@ -6,9 +6,9 @@ source = main_file.read_text(encoding="utf-8")
 # Ensure every article image lookup goes through a resolver, not only one widget pattern.
 source = source.replace("article.imageUrl", "_resolveImageUrl(article)")
 
-helper = r"""String _resolveImageUrl(NewsArticle article) {
+helper = r"""String _resolveImageUrl(NewsArticle article, {bool fallbackOnly = false}) {
   final supplied = article.imageUrl.trim();
-  if (supplied.startsWith('https://') || supplied.startsWith('http://')) {
+  if (!fallbackOnly && (supplied.startsWith('https://') || supplied.startsWith('http://'))) {
     return supplied;
   }
 
@@ -44,6 +44,46 @@ if "String _resolveImageUrl(NewsArticle article)" not in source:
     if needle not in source:
         raise SystemExit("Could not locate top-level insertion point in main.dart")
     source = source.replace(needle, helper + needle, 1)
+
+
+# If a feed-provided URL fails, retry with the topic-specific fallback URL.
+# Walk Image.network(...) expressions safely so nested widget arguments are preserved.
+needle = "Image.network("
+search_from = 0
+while True:
+    start = source.find(needle, search_from)
+    if start < 0:
+        break
+    open_paren = start + len("Image.network") 
+    depth, quote, escaped, end = 0, None, False, None
+    for i in range(open_paren, len(source)):
+        ch = source[i]
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\\\":
+                escaped = True
+            elif ch == quote:
+                quote = None
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end is None:
+        raise SystemExit("Could not safely inspect Image.network call")
+    call = source[start:end + 1]
+    if "_resolveImageUrl(article" in call and "errorBuilder:" not in call:
+        addition = ", errorBuilder: (context, error, stackTrace) => Image.network(_resolveImageUrl(article, fallbackOnly: true), fit: BoxFit.cover)"
+        source = source[:end] + addition + source[end:]
+        search_from = end + len(addition) + 1
+    else:
+        search_from = end + 1
 
 main_file.write_text(source, encoding="utf-8")
 print("Applied topic-aware fallback images to all article image references.")
